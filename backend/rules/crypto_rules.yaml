@@ -1,0 +1,116 @@
+rules:
+  - id: weak-crypto-md5
+    message: "Weak cryptographic hash function MD5 detected."
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.new("md5", ...)
+          - pattern: hashlib.new('md5', ...)
+          - pattern: Crypto.Hash.MD5.new(...)
+          - pattern: Cryptodome.Hash.MD5.new(...)
+
+  - id: weak-crypto-sha1
+    message: "Weak cryptographic hash function SHA1 detected."
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.sha1(...)
+          - pattern: hashlib.new("sha1", ...)
+          - pattern: hashlib.new('sha1', ...)
+          - pattern: Crypto.Hash.SHA1.new(...)
+          - pattern: Cryptodome.Hash.SHA1.new(...)
+
+  - id: weak-crypto-des
+    message: "Weak cryptographic cipher DES detected."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: Crypto.Cipher.DES.new(...)
+          - pattern: Cryptodome.Cipher.DES.new(...)
+          - pattern: DES.new(...)
+          - pattern: pyDes.des(...)
+
+  - id: weak-crypto-rc4
+    message: "Broken/weak cryptographic cipher RC4 / ARC4 detected."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: Crypto.Cipher.ARC4.new(...)
+          - pattern: Cryptodome.Cipher.ARC4.new(...)
+          - pattern: ARC4.new(...)
+          - pattern: rc4(...)
+
+  - id: hardcoded-secret-key
+    message: "Potential hardcoded cryptographic key or secret string detected."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: $KEY = "$VAL"
+          - pattern: $KEY = '$VAL'
+          - pattern: $KEY = b"$VAL"
+          - pattern: $KEY = b'$VAL'
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i).*(api_key|secret_key|private_key|access_key|auth_key|password|passwd|pwd|token|access_token|auth_token|client_secret|api_secret|encryption_key).*
+      - metavariable-regex:
+          metavariable: $VAL
+          regex: ^(?=.*[a-zA-Z])(?=.*[0-9]).{12,}$
+      - metavariable-regex:
+          metavariable: $VAL
+          regex: (?i)^(?!test$|testing$|changeme$|example$|placeholder$|todo$|fixme$|xxx$|xxxx$|none$|null$|password$|123456$|admin$|secret$|dummy$|sample$|demo$|temp$|mock$).+$
+
+  - id: weak-rsa-key-size
+    message: "Weak RSA key size (< 2048 bits) detected."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: RSA.generate(1024, ...)
+          - pattern: RSA.generate(512, ...)
+          - pattern: rsa.generate_private_key(..., key_size=1024, ...)
+          - pattern: rsa.generate_private_key(..., key_size=512, ...)
+          - pattern: Crypto.PublicKey.RSA.generate(1024, ...)
+          - pattern: Cryptodome.PublicKey.RSA.generate(1024, ...)
+
+  - id: quantum-vulnerable-rsa
+    message: "RSA key size >= 2048 is classically secure but quantum-vulnerable (Medium risk)."
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: RSA.generate(2048, ...)
+          - pattern: RSA.generate(3072, ...)
+          - pattern: RSA.generate(4096, ...)
+          - pattern: rsa.generate_private_key(..., key_size=2048, ...)
+          - pattern: rsa.generate_private_key(..., key_size=3072, ...)
+          - pattern: rsa.generate_private_key(..., key_size=4096, ...)
+          - pattern: Crypto.PublicKey.RSA.generate(2048, ...)
+          - pattern: Crypto.PublicKey.RSA.generate(4096, ...)
+          - pattern: Cryptodome.PublicKey.RSA.generate(2048, ...)
+          - pattern: Cryptodome.PublicKey.RSA.generate(4096, ...)
+
+vulnerable_dependencies:
+  python:
+    pycrypto:
+      max_safe_version: "none"
+      note: "Unmaintained since 2013, multiple CVEs (e.g. CVE-2013-7459). Use pycryptodome."
+    pyjwt:
+      unsafe_versions: ["<2.0.0"]
+      note: "Older PyJWT allowed algorithm confusion attacks (alg=none)."
+  javascript:
+    jsrsasign:
+      unsafe_versions: ["<10.5.0"]
+      note: "Signature validation bypass in older versions."
+    crypto-js:
+      unsafe_versions: ["<4.0.0"]
+      note: "Weak default configs / PBKDF1 usage in old versions."
+  java:
+    bouncycastle:
+      unsafe_versions: ["<1.60"]
+      note: "Multiple padding-oracle / timing CVEs before 1.60."
